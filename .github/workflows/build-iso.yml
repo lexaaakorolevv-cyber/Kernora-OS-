@@ -1,0 +1,97 @@
+name: Build Kernora test ISO
+
+on:
+  push:
+    branches:
+      - codex/build-iso
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kernora-iso-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      OMP_NUM_THREADS: "2"
+      OMP_THREAD_LIMIT: "2"
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - name: Checkout Kernora
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Prepare build host
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo apt-get update
+          sudo apt-get install -y build-essential uidmap curl git gnupg dpkg-dev fakeroot gettext libxml2-utils python3 python3-pyqt6 python3-pyqt6.qtsvg qt6-qpa-plugins qt6-svg-plugins xz-utils xorriso grub-common grub-pc-bin grub-efi-amd64-bin mtools cpio dosfstools qemu-system-x86 ovmf zlib1g-dev liblzma-dev liblzo2-dev liblz4-dev libzstd-dev
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          build_user=$(id -un)
+          if ! grep -q "^${build_user}:" /etc/subuid; then
+            sudo usermod --add-subuids 100000:165535 "$build_user"
+          fi
+          if ! grep -q "^${build_user}:" /etc/subgid; then
+            sudo usermod --add-subgids 100000:165535 "$build_user"
+          fi
+          unshare --map-auto --setuid 0 --setgid 0 id
+          df -h .
+
+      - name: Checkout SquashFS 4.7.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: plougher/squashfs-tools
+          ref: 99d23a31b471433c51e9c145aeba2ab1536e34df
+          path: .ci-tools/squashfs
+          persist-credentials: false
+
+      - name: Build SquashFS tools
+        run: |
+          make -C .ci-tools/squashfs/squashfs-tools -j2
+          sudo install -m755 .ci-tools/squashfs/squashfs-tools/mksquashfs /usr/local/bin/mksquashfs
+          sudo install -m755 .ci-tools/squashfs/squashfs-tools/unsquashfs /usr/local/bin/unsquashfs
+          mksquashfs -version
+          ./tests/test-squashfs-root.sh
+
+      - name: Check application icon sync
+        run: |
+          python3 tests/test-app-icon-sync.py
+          ./tests/test-kernora-apps-source.sh
+
+      - name: Fetch pinned sources
+        run: |
+          make sources 2>&1 | tee build-sources.log
+
+      - name: Build ISO
+        run: |
+          make iso 2>&1 | tee build-iso.log
+
+      - name: Test BIOS and UEFI boot
+        run: |
+          ./scripts/smoke-test-iso 2>&1 | tee build-boot.log
+
+      - name: Upload test ISO and checksum
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: kernora-test-iso
+          path: |
+            out/iso/*.iso
+            out/iso/*.iso.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: kernora-build-logs
+          path: |
+            build-*.log
+            _build/smoke/
+          if-no-files-found: ignore
+          retention-days: 7
