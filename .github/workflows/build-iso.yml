@@ -54,7 +54,6 @@ jobs:
           make -C .ci-tools/squashfs/squashfs-tools -j2
           sudo install -m755 .ci-tools/squashfs/squashfs-tools/mksquashfs /usr/local/bin/mksquashfs
           sudo install -m755 .ci-tools/squashfs/squashfs-tools/unsquashfs /usr/local/bin/unsquashfs
-          mksquashfs -version
           ./tests/test-squashfs-root.sh
 
       - name: Check application icon sync
