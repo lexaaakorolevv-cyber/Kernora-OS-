@@ -29,7 +29,7 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           sudo apt-get update
-          sudo apt-get install -y build-essential uidmap curl git gnupg dpkg-dev fakeroot gettext libxml2-utils python3 python3-pyqt6 python3-pyqt6.qtsvg qt6-qpa-plugins qt6-svg-plugins xz-utils xorriso grub-common grub-pc-bin grub-efi-amd64-bin mtools cpio dosfstools qemu-system-x86 ovmf zlib1g-dev liblzma-dev liblzo2-dev liblz4-dev libzstd-dev
+          sudo apt-get install -y build-essential uidmap curl git gnupg dpkg-dev fakeroot gettext libxml2-utils python3 python3-pyqt6 python3-pyqt6.qtsvg qt6-qpa-plugins libqt6svg6 xz-utils xorriso grub-common grub-pc-bin grub-efi-amd64-bin mtools cpio dosfstools qemu-system-x86 ovmf zlib1g-dev liblzma-dev liblzo2-dev liblz4-dev libzstd-dev
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           build_user=$(id -un)
           if ! grep -q "^${build_user}:" /etc/subuid; then
