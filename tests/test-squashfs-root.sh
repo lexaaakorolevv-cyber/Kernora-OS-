@@ -9,7 +9,7 @@ tar --numeric-owner --owner=0 --group=0 --no-recursion \
 tar --numeric-owner --owner=1000 --group=1000 -C "$work/input" \
   -rf "$work/root.tar" home/live
 env -u SOURCE_DATE_EPOCH mksquashfs - "$work/root.squashfs" \
-  -tar -numeric-owner -default-uid 0 -default-gid 0 \
+  -tar -default-uid 0 -default-gid 0 \
   -root-uid 0 -root-gid 0 -root-mode 0755 \
   -noappend -no-progress < "$work/root.tar" > "$work/build.log"
 unsquashfs -lln "$work/root.squashfs" > "$work/inodes.txt"
